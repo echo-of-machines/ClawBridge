@@ -35,11 +35,21 @@ function findClaudeDesktopExec(): string | undefined {
     const candidate = "/Applications/Claude.app/Contents/MacOS/Claude";
     if (fs.existsSync(candidate)) return candidate;
   } else {
-    try {
-      const result = execSync("which claude 2>/dev/null", { encoding: "utf8" }).trim();
-      if (result) return result;
-    } catch {
-      // not found
+    for (const name of ["claude-desktop", "claude"]) {
+      try {
+        const result = execSync(`which ${name} 2>/dev/null`, { encoding: "utf8" }).trim();
+        if (result) return result;
+      } catch {
+        // not found
+      }
+    }
+    const candidates = [
+      "/usr/bin/claude-desktop",
+      "/opt/Claude/claude-desktop",
+      path.join(os.homedir(), ".local", "bin", "claude-desktop"),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) return c;
     }
   }
   return undefined;

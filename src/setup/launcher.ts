@@ -54,7 +54,8 @@ function createWindowsShortcut(execPath: string, launcherFile: string): void {
 
 export function createLauncher(env: DetectResult): { launcherFile: string } {
   const platform = env.platform;
-  const execPath = env.claudeDesktop.execPath ?? "claude";
+  const fallback = platform === "win32" ? "claude" : "claude-desktop";
+  const execPath = env.claudeDesktop.execPath ?? fallback;
 
   if (!fs.existsSync(OPENCLAW_DIR)) {
     fs.mkdirSync(OPENCLAW_DIR, { recursive: true });

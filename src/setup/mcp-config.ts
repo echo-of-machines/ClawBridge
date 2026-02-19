@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { DetectResult } from "./detect.js";
 
 const MCP_KEY = "openclaw";
@@ -18,7 +19,7 @@ type ClaudeDesktopConfig = {
 function resolveIndexJsPath(): string {
   // Resolve absolute path to the built index.js
   return path.resolve(
-    path.dirname(new URL(import.meta.url).pathname),
+    path.dirname(fileURLToPath(import.meta.url)),
     "..",
     "index.js",
   );

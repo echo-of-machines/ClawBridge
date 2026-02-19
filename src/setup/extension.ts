@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 import json5 from "json5";
 import type { DetectResult } from "./detect.js";
 
@@ -31,7 +32,7 @@ function resolveExtensionSource(): string {
   // At runtime this file is dist/setup/extension.js — walk up two levels
   // to the repo root, then into the extension/ directory.
   return path.resolve(
-    path.dirname(new URL(import.meta.url).pathname),
+    path.dirname(fileURLToPath(import.meta.url)),
     "..",
     "..",
     "extension",
