@@ -1,0 +1,30 @@
+{
+  "id": "claude-desktop",
+  "channels": ["claude-desktop"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": false
+      },
+      "cdpPort": {
+        "type": "number",
+        "default": 19222
+      },
+      "cdpHost": {
+        "type": "string",
+        "default": "127.0.0.1"
+      },
+      "responseTimeoutMs": {
+        "type": "number",
+        "default": 120000
+      },
+      "messagePrefix": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  }
+}

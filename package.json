@@ -1,0 +1,26 @@
+{
+  "name": "clawbridge",
+  "version": "0.1.0",
+  "description": "MCP server bridging Claude Desktop and OpenClaw via CDP",
+  "type": "module",
+  "bin": {
+    "clawbridge": "./dist/setup.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./setup": "./dist/setup.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "json5": "^2.2.3",
+    "ws": "^8.19.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.3"
+  }
+}
