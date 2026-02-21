@@ -24,13 +24,37 @@ export type DetectResult = {
 function findClaudeDesktopExec(): string | undefined {
   const p = process.platform;
   if (p === "win32") {
-    const candidate = path.join(
+    // Standard installer path
+    const standard = path.join(
       process.env.LOCALAPPDATA ?? "",
       "Programs",
       "Claude",
       "Claude.exe",
     );
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(standard)) return standard;
+    // Windows Store / MSIX path — resolve via PowerShell
+    try {
+      const psOut = execSync(
+        'powershell.exe -NoProfile -Command "(Get-Process -Name claude -ErrorAction SilentlyContinue | Where-Object { $_.Path -like \'*WindowsApps*\' } | Select-Object -First 1).Path"',
+        { encoding: "utf8", timeout: 5000 },
+      ).trim();
+      if (psOut && fs.existsSync(psOut)) return psOut;
+    } catch {
+      // not running or not found
+    }
+    // Windows Store fallback — scan WindowsApps for Claude
+    try {
+      const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
+      const appsDir = path.join(programFiles, "WindowsApps");
+      if (fs.existsSync(appsDir)) {
+        for (const entry of fs.readdirSync(appsDir).filter((d) => d.startsWith("Claude_"))) {
+          const candidate = path.join(appsDir, entry, "app", "Claude.exe");
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      }
+    } catch {
+      // WindowsApps may not be readable — that's ok
+    }
   } else if (p === "darwin") {
     const candidate = "/Applications/Claude.app/Contents/MacOS/Claude";
     if (fs.existsSync(candidate)) return candidate;
