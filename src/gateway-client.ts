@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
 import WebSocket from "ws";
+import {
+  buildDeviceAuthPayload,
+  publicKeyRawBase64Url,
+  signDevicePayload,
+  type DeviceIdentity,
+} from "./device-identity.js";
 
 // --- Frame types (loose parsing — no additionalProperties: false) ---
 
@@ -37,13 +43,14 @@ type Pending = {
 export type GatewayClientOptions = {
   url?: string;
   token?: string;
+  deviceIdentity?: DeviceIdentity;
   onEvent?: (evt: EventFrame) => void;
   onHelloOk?: (hello: HelloOk) => void;
   onClose?: (code: number, reason: string) => void;
   onConnectError?: (err: Error) => void;
 };
 
-const PROTOCOL_VERSION = 1;
+const PROTOCOL_VERSION = 3;
 
 export class GatewayClient {
   private ws: WebSocket | null = null;
@@ -127,19 +134,51 @@ export class GatewayClient {
     if (this.connectSent) return;
     this.connectSent = true;
 
+    const clientId = "clawbridge-mcp";
+    const clientMode = "backend";
+    const role = "operator";
+    const scopes = ["operator.admin"];
+    const nonce = this.connectNonce ?? undefined;
+    const authToken = this.opts.token;
+
+    const device = (() => {
+      const id = this.opts.deviceIdentity;
+      if (!id) return undefined;
+      const signedAtMs = Date.now();
+      const payload = buildDeviceAuthPayload({
+        deviceId: id.deviceId,
+        clientId,
+        clientMode,
+        role,
+        scopes,
+        signedAtMs,
+        token: authToken ?? null,
+        nonce,
+      });
+      const signature = signDevicePayload(id.privateKeyPem, payload);
+      return {
+        id: id.deviceId,
+        publicKey: publicKeyRawBase64Url(id.publicKeyPem),
+        signature,
+        signedAt: signedAtMs,
+        nonce,
+      };
+    })();
+
     const params = {
       minProtocol: PROTOCOL_VERSION,
       maxProtocol: PROTOCOL_VERSION,
       client: {
-        id: "clawbridge-mcp",
-        version: "0.1.0",
+        id: clientId,
+        version: "0.3.0",
         platform: process.platform,
-        mode: "backend",
+        mode: clientMode,
       },
       caps: [],
-      auth: this.opts.token ? { token: this.opts.token } : undefined,
-      role: "operator",
-      scopes: ["operator.admin"],
+      auth: authToken ? { token: authToken } : undefined,
+      role,
+      scopes,
+      device,
     };
 
     void this.request<HelloOk>("connect", params)

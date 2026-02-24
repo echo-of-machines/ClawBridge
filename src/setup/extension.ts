@@ -12,9 +12,6 @@ const DEFAULT_PLUGIN_CONFIG = {
   enabled: true,
   config: {
     enabled: true,
-    cdpPort: 19222,
-    cdpHost: "127.0.0.1",
-    interceptAll: true,
     responseTimeoutMs: 120000,
     messagePrefix: true,
   },
@@ -29,15 +26,30 @@ type OpenClawJson = {
 };
 
 function resolveExtensionSource(): string {
-  // At runtime this file is dist/setup/extension.js — walk up two levels
-  // to the repo root, then into the extension/ directory.
+  // The bundled extension is relative to this package's root
   return path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     "..",
     "..",
-    "extension",
+    "..",
+    "..",
+    "extensions",
+    PLUGIN_ID,
   );
 }
+
+function resolveBridgeScripts(): string {
+  // Bridge scripts are in this package's scripts/bridge/ directory
+  return path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "scripts",
+    "bridge",
+  );
+}
+
+const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "scripts"]);
 
 function copyDir(src: string, dest: string): void {
   fs.mkdirSync(dest, { recursive: true });
@@ -45,7 +57,11 @@ function copyDir(src: string, dest: string): void {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
+      if (!SKIP_DIRS.has(entry.name)) {
+        copyDir(srcPath, destPath);
+      }
+    } else if (entry.isSymbolicLink()) {
+      // Skip symlinks (monorepo workspace links)
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
@@ -74,7 +90,14 @@ export function installExtension(env: DetectResult): { extensionDir: string } {
     copyDir(src, DEST_DIR);
   }
 
-  // 2. Update OpenClaw config
+  // 2. Copy bridge PowerShell scripts alongside the extension
+  const scriptsSource = resolveBridgeScripts();
+  const scriptsDest = path.join(DEST_DIR, "scripts", "bridge");
+  if (fs.existsSync(scriptsSource)) {
+    copyDir(scriptsSource, scriptsDest);
+  }
+
+  // 3. Update OpenClaw config
   const configPath = env.openclaw.configPath!;
   const config = readOpenClawJson(configPath);
 

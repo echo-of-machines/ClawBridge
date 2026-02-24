@@ -1,5 +1,10 @@
-node_modules
-dist
-.tsbuildinfo
-.DS_Store
-*.tgz
+node_modules/
+dist/
+.npmrc
+*.js
+*.d.ts
+*.js.map
+!scripts/**/*.js
+!scripts/**/*.mjs
+!extension/scripts/**/*.js
+!extension/scripts/**/*.mjs

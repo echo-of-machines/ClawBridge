@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import json5 from "json5";
@@ -9,26 +8,9 @@ export type CheckResult = {
   name: string;
   pass: boolean;
   message: string;
+  /** "error" blocks setup success; "warning" is informational only */
+  severity: "error" | "warning";
 };
-
-function tcpAvailable(port: number, timeoutMs = 1000): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    const timer = setTimeout(() => {
-      socket.destroy();
-      resolve(true); // timeout = nobody listening = port available
-    }, timeoutMs);
-    socket.connect(port, "127.0.0.1", () => {
-      clearTimeout(timer);
-      socket.destroy();
-      resolve(false); // connected = port in use
-    });
-    socket.on("error", () => {
-      clearTimeout(timer);
-      resolve(true); // error = port available
-    });
-  });
-}
 
 export async function validate(env: DetectResult): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
@@ -42,15 +24,16 @@ export async function validate(env: DetectResult): Promise<CheckResult[]> {
       results.push({
         name: "mcp-config",
         pass: has,
+        severity: "error",
         message: has
           ? "Claude Desktop config has mcpServers.openclaw"
           : "Missing mcpServers.openclaw in Claude Desktop config — run setup again",
       });
     } catch {
-      results.push({ name: "mcp-config", pass: false, message: "Failed to parse Claude Desktop config" });
+      results.push({ name: "mcp-config", pass: false, severity: "error", message: "Failed to parse Claude Desktop config" });
     }
   } else {
-    results.push({ name: "mcp-config", pass: false, message: "Claude Desktop config file not found" });
+    results.push({ name: "mcp-config", pass: false, severity: "error", message: "Claude Desktop config file not found" });
   }
 
   // 2. OpenClaw config has plugin enabled
@@ -64,15 +47,16 @@ export async function validate(env: DetectResult): Promise<CheckResult[]> {
       results.push({
         name: "openclaw-plugin",
         pass: enabled,
+        severity: "error",
         message: enabled
           ? "OpenClaw claude-desktop plugin is enabled"
           : "Plugin claude-desktop not enabled in OpenClaw config — run setup again",
       });
     } catch {
-      results.push({ name: "openclaw-plugin", pass: false, message: "Failed to parse OpenClaw config" });
+      results.push({ name: "openclaw-plugin", pass: false, severity: "error", message: "Failed to parse OpenClaw config" });
     }
   } else {
-    results.push({ name: "openclaw-plugin", pass: false, message: "OpenClaw config file not found" });
+    results.push({ name: "openclaw-plugin", pass: false, severity: "error", message: "OpenClaw config file not found" });
   }
 
   // 3. Extension files exist
@@ -81,6 +65,7 @@ export async function validate(env: DetectResult): Promise<CheckResult[]> {
   results.push({
     name: "extension-files",
     pass: extExists,
+    severity: "error",
     message: extExists
       ? `Extension files present at ${extDir}`
       : `Extension files missing at ${extDir} — run setup again`,
@@ -93,28 +78,43 @@ export async function validate(env: DetectResult): Promise<CheckResult[]> {
   results.push({
     name: "launcher",
     pass: launcherExists,
+    severity: "error",
     message: launcherExists
       ? `Launcher script present at ${launcherFile}`
       : `Launcher script missing — run setup again`,
   });
 
-  // 5. Gateway reachable
+  // 5. Gateway reachable (warning only — gateway may not be running during setup)
   results.push({
     name: "gateway",
     pass: env.openclaw.gatewayReachable,
+    severity: "warning",
     message: env.openclaw.gatewayReachable
       ? `Gateway reachable at ${env.openclaw.gatewayUrl}`
-      : `Gateway not reachable at ${env.openclaw.gatewayUrl} — start OpenClaw first`,
+      : `Gateway not reachable at ${env.openclaw.gatewayUrl} — start OpenClaw before using the bridge`,
   });
 
-  // 6. CDP port availability (only relevant when Claude Desktop is not running)
-  const cdpAvailable = await tcpAvailable(19222);
+  // 6. Platform check (UIA bridge requires Windows)
+  const isWindows = process.platform === "win32";
   results.push({
-    name: "cdp-port",
-    pass: true, // informational
-    message: cdpAvailable
-      ? "CDP port 19222 is available — launch Claude Desktop with the launcher script"
-      : "CDP port 19222 is in use — Claude Desktop may already be running with CDP enabled",
+    name: "platform",
+    pass: isWindows,
+    severity: "error",
+    message: isWindows
+      ? "Platform is Windows — UIA bridge supported"
+      : "UIA bridge requires Windows — Claude Desktop bridge will not work on this platform",
+  });
+
+  // 7. Bridge scripts exist alongside extension
+  const scriptsDir = path.join(extDir, "scripts", "bridge");
+  const scriptsExist = fs.existsSync(scriptsDir);
+  results.push({
+    name: "bridge-scripts",
+    pass: scriptsExist,
+    severity: "error",
+    message: scriptsExist
+      ? `Bridge scripts present at ${scriptsDir}`
+      : `Bridge scripts missing at ${scriptsDir} — run setup again`,
   });
 
   return results;

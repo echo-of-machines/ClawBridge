@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ChannelPlugin } from "openclaw/plugin-sdk";
-import { CdpBridge } from "./cdp-bridge.js";
+import { DesktopBridge } from "./desktop-bridge.js";
 import type { ClaudeDesktopConfig } from "./config.js";
 
 type ResolvedAccount = {
@@ -9,11 +9,16 @@ type ResolvedAccount = {
   config: ClaudeDesktopConfig;
 };
 
-let bridge: CdpBridge | null = null;
+let bridge: DesktopBridge | null = null;
 
-export function getCdpBridge(): CdpBridge {
+export function getDesktopBridge(scriptsDir?: string): DesktopBridge {
   if (!bridge) {
-    bridge = new CdpBridge();
+    if (!scriptsDir) {
+      throw new Error(
+        "DesktopBridge not initialized — call getDesktopBridge(scriptsDir) first",
+      );
+    }
+    bridge = new DesktopBridge({ scriptsDir });
   }
   return bridge;
 }
@@ -23,9 +28,9 @@ export const claudeDesktopPlugin: ChannelPlugin<ResolvedAccount> = {
   meta: {
     id: "claude-desktop",
     label: "Claude Desktop",
-    selectionLabel: "Claude Desktop (CDP Bridge)",
+    selectionLabel: "Claude Desktop (UIA Bridge)",
     docsPath: "/channels/claude-desktop",
-    blurb: "Bridge to Claude Desktop via Chrome DevTools Protocol.",
+    blurb: "Bridge to Claude Desktop via Windows UI Automation.",
     order: 99,
   },
   capabilities: {
@@ -41,8 +46,6 @@ export const claudeDesktopPlugin: ChannelPlugin<ResolvedAccount> = {
         enabled: pluginCfg?.enabled ?? false,
         config: {
           enabled: pluginCfg?.enabled ?? false,
-          cdpPort: pluginCfg?.cdpPort ?? 19222,
-          cdpHost: pluginCfg?.cdpHost ?? "127.0.0.1",
           responseTimeoutMs: pluginCfg?.responseTimeoutMs ?? 120000,
           messagePrefix: pluginCfg?.messagePrefix ?? true,
         },
@@ -52,25 +55,21 @@ export const claudeDesktopPlugin: ChannelPlugin<ResolvedAccount> = {
   outbound: {
     deliveryMode: "direct",
     sendText: async ({ text }) => {
-      const b = getCdpBridge();
+      const b = getDesktopBridge();
       await b.injectMessage(text);
       return { channel: "claude-desktop", messageId: randomUUID() };
     },
   },
   gateway: {
     startAccount: async (ctx) => {
-      const account = ctx.account;
-      const { cdpHost, cdpPort } = account.config;
-      ctx.log?.info(
-        `[claude-desktop] connecting CDP bridge to ${cdpHost}:${cdpPort}`,
-      );
-      const b = getCdpBridge();
-      await b.connect(cdpHost, cdpPort);
-      ctx.log?.info("[claude-desktop] CDP bridge connected");
+      ctx.log?.info("[claude-desktop] connecting UIA bridge");
+      const b = getDesktopBridge();
+      await b.connect();
+      ctx.log?.info("[claude-desktop] UIA bridge connected");
     },
     stopAccount: async (ctx) => {
-      ctx.log?.info("[claude-desktop] disconnecting CDP bridge");
-      getCdpBridge().disconnect();
+      ctx.log?.info("[claude-desktop] disconnecting UIA bridge");
+      getDesktopBridge().disconnect();
     },
   },
 };

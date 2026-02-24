@@ -1,12 +1,43 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import { claudeDesktopPlugin, getCdpBridge } from "./src/channel.js";
+import { claudeDesktopPlugin, getDesktopBridge } from "./src/channel.js";
 import type { ClaudeDesktopConfig } from "./src/config.js";
 import { ResponseRouter } from "./src/response-router.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Resolve the path to the PowerShell bridge scripts.
+ * Checks deployed location first, then falls back to monorepo layout.
+ */
+function resolveScriptsDir(): string {
+  // Deployed: scripts copied alongside the extension
+  const deployed = path.join(__dirname, "scripts", "bridge");
+  if (fs.existsSync(deployed)) return deployed;
+
+  // Development: scripts in the clawbridge-mcp package
+  const monorepo = path.resolve(
+    __dirname,
+    "..",
+    "..",
+    "packages",
+    "clawbridge-mcp",
+    "scripts",
+    "bridge",
+  );
+  if (fs.existsSync(monorepo)) return monorepo;
+
+  throw new Error(
+    `Bridge scripts not found at ${deployed} or ${monorepo}. Run clawbridge setup.`,
+  );
+}
 
 const plugin = {
   id: "claude-desktop",
   name: "Claude Desktop",
-  description: "Claude Desktop CDP bridge channel plugin",
+  description: "Claude Desktop UIA bridge channel plugin",
   configSchema: {},
   register(api: OpenClawPluginApi) {
     const pluginCfg = api.pluginConfig as
@@ -14,10 +45,16 @@ const plugin = {
       | undefined;
     if (!pluginCfg?.enabled) return;
 
-    const bridge = getCdpBridge();
+    if (process.platform !== "win32") {
+      api.logger.warn(
+        "[claude-desktop] UIA bridge only works on Windows — skipping",
+      );
+      return;
+    }
+
+    const scriptsDir = resolveScriptsDir();
+    const bridge = getDesktopBridge(scriptsDir);
     const router = new ResponseRouter();
-    const cdpHost = pluginCfg.cdpHost ?? "127.0.0.1";
-    const cdpPort = pluginCfg.cdpPort ?? 19222;
     const messagePrefix = pluginCfg.messagePrefix ?? true;
 
     // Wire response routing: when Claude Desktop responds, log and forward
@@ -25,28 +62,23 @@ const plugin = {
       api.logger.info(
         `[claude-desktop] routing response to ${channelId}:${from} (${text.length} chars)`,
       );
-      // The outbound delivery is handled by OpenClaw's pipeline when the
-      // agent intercept (task 4) returns the response as a ReplyPayload.
-      // For direct observation mode, responses are logged for debugging.
     });
 
     // 1. Register the channel plugin
     api.registerChannel({ plugin: claudeDesktopPlugin });
 
-    // 2. Register CDP lifecycle service
+    // 2. Register UIA lifecycle service
     api.registerService({
-      id: "claude-desktop-cdp",
+      id: "claude-desktop-uia",
       async start() {
-        api.logger.info(
-          `[claude-desktop] connecting CDP bridge to ${cdpHost}:${cdpPort}`,
-        );
-        await bridge.connect(cdpHost, cdpPort);
+        api.logger.info("[claude-desktop] connecting UIA bridge");
+        await bridge.connect();
         router.startObserving(bridge);
-        api.logger.info("[claude-desktop] CDP bridge connected");
+        api.logger.info("[claude-desktop] UIA bridge connected");
       },
       stop() {
         bridge.disconnect();
-        api.logger.info("[claude-desktop] CDP bridge disconnected");
+        api.logger.info("[claude-desktop] UIA bridge disconnected");
       },
     });
 
@@ -73,8 +105,7 @@ const plugin = {
     api.registerGatewayMethod("claude_desktop.status", ({ respond }) => {
       respond(true, {
         connected: bridge.isConnected(),
-        cdpHost,
-        cdpPort,
+        transport: "uia",
       });
     });
   },

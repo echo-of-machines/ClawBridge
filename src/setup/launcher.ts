@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import type { DetectResult } from "./detect.js";
 
-const CDP_PORT = 19222;
 const OPENCLAW_DIR = path.join(os.homedir(), ".openclaw");
 
 function launcherPath(platform: NodeJS.Platform): string {
@@ -13,23 +12,15 @@ function launcherPath(platform: NodeJS.Platform): string {
 }
 
 function buildWindows(execPath: string): string {
-  return `@echo off\r\nstart "" "${execPath}" --remote-debugging-port=${CDP_PORT}\r\n`;
+  return `@echo off\r\nstart "" "${execPath}"\r\n`;
 }
 
 function buildMacOS(_execPath: string): string {
-  return [
-    "#!/bin/bash",
-    `open -a Claude --args --remote-debugging-port=${CDP_PORT}`,
-    "",
-  ].join("\n");
+  return ["#!/bin/bash", "open -a Claude", ""].join("\n");
 }
 
 function buildLinux(execPath: string): string {
-  return [
-    "#!/bin/bash",
-    `"${execPath}" --remote-debugging-port=${CDP_PORT} &`,
-    "",
-  ].join("\n");
+  return ["#!/bin/bash", `"${execPath}" &`, ""].join("\n");
 }
 
 function createWindowsShortcut(execPath: string, launcherFile: string): void {
@@ -42,7 +33,7 @@ function createWindowsShortcut(execPath: string, launcherFile: string): void {
     `$sc.TargetPath = '${launcherFile.replace(/'/g, "''")}';`,
     `$sc.WorkingDirectory = '${OPENCLAW_DIR.replace(/'/g, "''")}';`,
     `$sc.IconLocation = '${execPath.replace(/'/g, "''")},0';`,
-    `$sc.Description = 'Claude Desktop with OpenClaw CDP bridge';`,
+    `$sc.Description = 'Claude Desktop with OpenClaw';`,
     `$sc.Save();`,
   ].join(" ");
   try {

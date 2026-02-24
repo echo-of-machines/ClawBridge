@@ -1,5 +1,5 @@
 import type { ReplyPayload } from "openclaw/plugin-sdk";
-import { getCdpBridge } from "./channel.js";
+import { getDesktopBridge } from "./channel.js";
 
 const POLL_INTERVAL_MS = 500;
 const STABLE_POLLS = 3;
@@ -18,7 +18,7 @@ type ResolverConfig = {
 
 /**
  * Drop-in replacement for `getReplyFromConfig` that routes the inbound
- * message through Claude Desktop via CDP and returns the response as a
+ * message through Claude Desktop via UIA and returns the response as a
  * `ReplyPayload`. This lets OpenClaw's outbound pipeline deliver the
  * reply back to the originating channel naturally.
  */
@@ -27,7 +27,7 @@ export async function getClaudeDesktopResolver(
   _opts?: unknown,
   configOverride?: ResolverConfig,
 ): Promise<ReplyPayload | ReplyPayload[] | undefined> {
-  const bridge = getCdpBridge();
+  const bridge = getDesktopBridge();
   if (!bridge.isConnected()) return undefined;
 
   const content =

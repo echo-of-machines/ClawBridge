@@ -1,4 +1,4 @@
-import type { CdpBridge } from "./cdp-bridge.js";
+import type { DesktopBridge } from "./desktop-bridge.js";
 
 type PendingMessage = {
   channelId: string;
@@ -38,9 +38,9 @@ export class ResponseRouter {
   }
 
   /**
-   * Start observing CDP bridge responses and routing them back.
+   * Start observing bridge responses and routing them back.
    */
-  startObserving(bridge: CdpBridge): void {
+  startObserving(bridge: DesktopBridge): void {
     bridge.observeResponses((data) => {
       if (data.type !== "response" || !data.text) return;
       this.routeResponse(data.text);

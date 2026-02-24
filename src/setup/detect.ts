@@ -112,8 +112,10 @@ function findOpenClawConfig(): string {
 function readAuthToken(configPath: string): string | undefined {
   try {
     const raw = fs.readFileSync(configPath, "utf8");
-    const cfg = JSON.parse(raw) as { gateway?: { token?: string } };
-    return cfg.gateway?.token;
+    const cfg = JSON.parse(raw) as {
+      gateway?: { auth?: { token?: string } };
+    };
+    return cfg.gateway?.auth?.token;
   } catch {
     return undefined;
   }

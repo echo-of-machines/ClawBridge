@@ -1,11 +1,19 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { loadOrCreateDeviceIdentity } from "./device-identity.js";
 import { EventBuffer } from "./event-buffer.js";
 import { GatewayClient } from "./gateway-client.js";
 import { registerTools } from "./tools.js";
 
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL ?? "ws://127.0.0.1:18789";
 const AUTH_TOKEN = process.env.OPENCLAW_AUTH_TOKEN;
+
+// --- Device identity (persisted Ed25519 keypair for gateway auth) ---
+
+const deviceIdentity = loadOrCreateDeviceIdentity();
+process.stderr.write(
+  `[clawbridge] device id: ${deviceIdentity.deviceId.slice(0, 12)}...\n`,
+);
 
 // --- Gateway client ---
 
@@ -14,6 +22,7 @@ const events = new EventBuffer();
 const gw = new GatewayClient({
   url: GATEWAY_URL,
   token: AUTH_TOKEN,
+  deviceIdentity,
   onEvent: (evt) => events.push(evt),
   onHelloOk: (hello) => {
     process.stderr.write(

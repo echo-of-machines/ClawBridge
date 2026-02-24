@@ -9,14 +9,6 @@
         "type": "boolean",
         "default": false
       },
-      "cdpPort": {
-        "type": "number",
-        "default": 19222
-      },
-      "cdpHost": {
-        "type": "string",
-        "default": "127.0.0.1"
-      },
       "responseTimeoutMs": {
         "type": "number",
         "default": 120000

@@ -1,8 +1,28 @@
 {
   "name": "clawbridge",
-  "version": "0.1.0",
-  "description": "MCP server bridging Claude Desktop and OpenClaw via CDP",
+  "version": "0.3.0",
+  "description": "Bridge between Claude Desktop and OpenClaw via Windows UI Automation — MCP server + Claude Code plugin",
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openclaw/openclaw.git",
+    "directory": "packages/clawbridge-mcp"
+  },
+  "homepage": "https://github.com/openclaw/openclaw/tree/main/packages/clawbridge-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/openclaw/openclaw/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-desktop",
+    "openclaw",
+    "mcp",
+    "uia",
+    "bridge",
+    "agent-skills",
+    "claude-code-plugin"
+  ],
   "bin": {
     "clawbridge": "./dist/setup.js"
   },
@@ -10,8 +30,25 @@
     ".": "./dist/index.js",
     "./setup": "./dist/setup.js"
   },
+  "files": [
+    "dist/",
+    ".claude-plugin/",
+    "skills/",
+    "scripts/bridge/preamble.ps1",
+    "scripts/bridge/ensure-accessibility.ps1",
+    "scripts/bridge/silent-narrator-trigger.ps1",
+    "scripts/bridge/send-message.ps1",
+    "scripts/bridge/read-response.ps1",
+    "scripts/bridge/is-responding.ps1",
+    "scripts/bridge/switch-mode.ps1",
+    "scripts/bridge/screenshot.ps1",
+    "scripts/bridge/dump-tree.ps1",
+    "scripts/bridge/dump-all.ps1",
+    "scripts/bridge/dump-deep-all.ps1"
+  ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "prepublishOnly": "tsc"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
@@ -22,5 +59,11 @@
   "devDependencies": {
     "@types/ws": "^8.18.1",
     "typescript": "^5.9.3"
-  }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "os": [
+    "win32"
+  ]
 }

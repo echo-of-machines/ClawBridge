@@ -45,7 +45,10 @@ function writeConfig(configPath: string, config: ClaudeDesktopConfig): void {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n", "utf8");
 }
 
-export function installMcpConfig(env: DetectResult): { configPath: string } {
+export function installMcpConfig(
+  env: DetectResult,
+  options?: { useNpx?: boolean },
+): { configPath: string } {
   const configPath = env.claudeDesktop.configPath!;
   const config = readConfig(configPath);
 
@@ -61,10 +64,11 @@ export function installMcpConfig(env: DetectResult): { configPath: string } {
     mcpEnv.OPENCLAW_AUTH_TOKEN = env.openclaw.authToken;
   }
 
-  const entry: McpServerEntry = {
-    command: "node",
-    args: [resolveIndexJsPath()],
-  };
+  // Use npx when running from npm (not in monorepo) so the path stays valid
+  const entry: McpServerEntry = options?.useNpx
+    ? { command: "npx", args: ["-y", "clawbridge", "serve"] }
+    : { command: "node", args: [resolveIndexJsPath()] };
+
   if (Object.keys(mcpEnv).length > 0) {
     entry.env = mcpEnv;
   }
