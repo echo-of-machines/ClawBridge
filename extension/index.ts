@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { claudeDesktopPlugin, getDesktopBridge } from "./src/channel.js";
 import type { ClaudeDesktopConfig } from "./src/config.js";
-import { ResponseRouter } from "./src/response-router.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -54,15 +53,7 @@ const plugin = {
 
     const scriptsDir = resolveScriptsDir();
     const bridge = getDesktopBridge(scriptsDir);
-    const router = new ResponseRouter();
     const messagePrefix = pluginCfg.messagePrefix ?? true;
-
-    // Wire response routing: when Claude Desktop responds, log and forward
-    router.onResponse((channelId, from, text) => {
-      api.logger.info(
-        `[claude-desktop] routing response to ${channelId}:${from} (${text.length} chars)`,
-      );
-    });
 
     // 1. Register the channel plugin
     api.registerChannel({ plugin: claudeDesktopPlugin });
@@ -73,7 +64,6 @@ const plugin = {
       async start() {
         api.logger.info("[claude-desktop] connecting UIA bridge");
         await bridge.connect();
-        router.startObserving(bridge);
         api.logger.info("[claude-desktop] UIA bridge connected");
       },
       stop() {
@@ -82,14 +72,14 @@ const plugin = {
       },
     });
 
-    // 3. Intercept messages from other channels → inject into Claude Desktop
+    // 3. Intercept messages from other channels → inject into Claude Desktop via UIA
+    //    Claude Desktop responds back via MCP tools (openclaw_agent, openclaw_send, etc.)
     api.on("message_received", (event, ctx) => {
       if (ctx.channelId === "claude-desktop") return;
       if (!bridge.isConnected()) return;
       const prefix = messagePrefix
         ? `[${ctx.channelId}:${event.from}] `
         : "";
-      router.trackInjection(ctx.channelId, event.from);
       bridge.injectMessage(`${prefix}${event.content}`).catch(() => {});
     });
 

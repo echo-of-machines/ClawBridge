@@ -1,8 +1,8 @@
 ---
 name: clawbridge
-description: "Set up and manage OpenClaw + ClawBridge with Claude Desktop on Windows. Use when users want to: (1) install OpenClaw and ClawBridge from scratch, (2) configure API keys for AI models, (3) manage the OpenClaw gateway daemon, (4) send messages to or read responses from Claude Desktop via UIA bridge, (5) switch Claude Desktop modes (Chat/Cowork/Code), (6) capture screenshots or dump UIA trees for debugging, (7) run health checks on the bridge or OpenClaw installation."
+description: "Set up and manage OpenClaw + ClawBridge with Claude Desktop on Windows. Use when users want to: (1) install OpenClaw and ClawBridge from scratch, (2) configure API keys for AI models, (3) manage the OpenClaw gateway daemon, (4) send messages to Claude Desktop via UIA bridge, (5) switch Claude Desktop modes (Chat/Cowork/Code), (6) capture screenshots or dump UIA trees for debugging, (7) run health checks on the bridge or OpenClaw installation."
 disable-model-invocation: true
-argument-hint: "<setup|auth|gateway|bridge-status|send|read|mode|screenshot|debug|doctor> [args...]"
+argument-hint: "<setup|auth|gateway|bridge-status|send|mode|screenshot|debug|doctor> [args...]"
 allowed-tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -12,6 +12,13 @@ allowed-tools: Bash, Read, Write, Glob, Grep
 **Arguments**: `$ARGUMENTS`
 
 Route to the appropriate command below. If no subcommand is given, show the help menu.
+
+## Communication Model
+
+OpenClaw → Claude Desktop: **UIA** (inject message by pasting into the app)
+Claude Desktop → OpenClaw: **MCP tools** (openclaw_agent, openclaw_send, openclaw_rpc, etc.)
+
+UIA is only needed to push messages INTO Claude Desktop. Claude Desktop talks back directly via MCP tools.
 
 ## Bridge Script Invocation
 
@@ -37,7 +44,6 @@ Resolve `<scripts-dir>` once per session (check in order):
 | `gateway` | Start/stop/check the OpenClaw gateway daemon |
 | `bridge-status` | Check ClawBridge installation health |
 | `send <msg>` | Send a message to Claude Desktop via UIA |
-| `read` | Read the latest response from Claude Desktop |
 | `mode <mode>` | Switch Claude Desktop mode (Chat/Cowork/Code) |
 | `screenshot` | Capture Claude Desktop window |
 | `debug` | Dump UIA tree for troubleshooting |
@@ -97,13 +103,6 @@ Green `✓` = passing, Yellow `⚠` = warning, Red `✗` = error.
 
 ---
 
-## `read`
-
-Run `read-response.ps1`. Output starts with `RESPONSE:` — parse and display cleanly.
-`NO_RESPONSE` or `EMPTY_RESPONSE` means no response found.
-
----
-
 ## `mode <Chat|Cowork|Code>`
 
 Run `switch-mode.ps1 -Mode <Chat|Cowork|Code>`.
@@ -132,6 +131,8 @@ Dump UIA accessibility tree:
 | `dump-tree.ps1` | main-content subtree (try first) |
 | `dump-all.ps1` | Full tree, depth 5 |
 | `dump-deep-all.ps1` | Full tree, depth 12 |
+
+For debugging, `read-response.ps1` and `is-responding.ps1` are also available to inspect Claude Desktop's current state.
 
 ---
 
@@ -162,7 +163,6 @@ Setup & Configuration:
 
 Bridge Operations:
   send <msg>     Send a message to Claude Desktop
-  read           Read latest Claude Desktop response
   mode <mode>    Switch mode (Chat, Cowork, Code)
   screenshot     Capture Claude Desktop window
 
